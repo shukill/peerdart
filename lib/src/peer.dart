@@ -11,6 +11,8 @@ import 'package:peerdart/src/option_interfaces.dart';
 import 'package:peerdart/src/servermessage.dart';
 import 'package:peerdart/src/socket.dart';
 import 'package:peerdart/src/util.dart';
+import 'dart:math';
+import 'dart:async';
 
 class Peer extends StreamEventEmitter {
   Peer({String? id, PeerOptions? options}) {
@@ -77,6 +79,22 @@ class Peer extends StreamEventEmitter {
   final Map<String, List<dynamic>> _connections = {};
   final Map<String, List<ServerMessage>> _lostMessages = {};
 
+  // Connection management
+  static const int _maxReconnectAttempts = 5;
+  static const int _baseReconnectDelay = 1000; // 1 second
+  int _reconnectAttempts = 0;
+  bool _isReconnecting = false;
+
+  // Connection state
+  Timer? _heartbeatTimer;
+  static const int _heartbeatInterval = 20000; // 20 seconds
+  int _missedHeartbeats = 0;
+  static const int _maxMissedHeartbeats = 3;
+
+  // Connection timeout
+  static const int _connectionTimeout = 30000; // 30 seconds
+  Timer? _connectionTimer;
+
   String? get id {
     return _id;
   }
@@ -107,7 +125,50 @@ class Peer extends StreamEventEmitter {
 
   void _initialize(String id) {
     _id = id;
+    _startConnectionTimer();
+    _startHeartbeat();
     _socket.start(id, _options.token ?? "ssdsew");
+  }
+
+  void _startConnectionTimer() {
+    _connectionTimer?.cancel();
+    _connectionTimer = Timer(Duration(milliseconds: _connectionTimeout), () {
+      if (!_open) {
+        _abort(PeerErrorType.NetworkError, 'Connection timed out');
+      }
+    });
+  }
+
+  void _startHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _missedHeartbeats = 0;
+
+    _heartbeatTimer =
+        Timer.periodic(Duration(milliseconds: _heartbeatInterval), (timer) {
+      if (_missedHeartbeats >= _maxMissedHeartbeats) {
+        logger.warn('Missed too many heartbeats, connection may be stale');
+        _handleConnectionLost();
+        return;
+      }
+
+      _socket.sendHeartbeat();
+      _missedHeartbeats++;
+    });
+  }
+
+  void _handleConnectionLost() {
+    if (_disconnected || _destroyed) return;
+
+    logger.log('Connection appears to be lost');
+    _disconnected = true;
+    emit<String?>(SocketEventType.Disconnected.type, id);
+
+    // Attempt to reconnect
+    reconnect();
+  }
+
+  void _handleHeartbeat() {
+    _missedHeartbeats = 0;
   }
 
   Socket _createServerConnection() {
@@ -152,6 +213,9 @@ class Peer extends StreamEventEmitter {
     final type = message.type;
     final payload = message.payload;
     final peerId = message.src;
+
+    // Reset heartbeat counter on any message
+    _handleHeartbeat();
 
     switch (type) {
       case ServerMessageType.Open:
@@ -320,33 +384,79 @@ class Peer extends StreamEventEmitter {
     }
     logger.log('Destroy peer with ID:$id');
 
+    _connectionTimer?.cancel();
+    _heartbeatTimer?.cancel();
+
+    // Clean up all connections
+    for (var peer in _connections.keys.toList()) {
+      _cleanupPeer(peer);
+    }
+    _connections.clear();
+    _lostMessages.clear();
+
     disconnect();
 
     _destroyed = true;
-
-    _cleanup();
+    _reconnectAttempts = 0;
+    _isReconnecting = false;
   }
 
-  void _cleanup() {
-    final List<String> toRemove = [];
-    for (var peer in _connections.keys) {
-      toRemove.add(peer);
-    }
+  void _cleanupPeer(String peerId) {
+    final connections = _connections[peerId];
 
-    for (var peer in toRemove) {
-      _cleanupPeer(peer);
-      _connections.removeWhere((key, value) => key == peer);
+    if (connections == null) return;
+
+    for (var connection in connections) {
+      if (connection != null) {
+        // Close any open data channels
+        if (connection is DataConnection) {
+          connection.close();
+        }
+        // Stop any media streams
+        else if (connection is MediaConnection) {
+          connection.close();
+          final stream = connection.localStream;
+          if (stream != null) {
+            for (var track in stream.getTracks()) {
+              track.stop();
+            }
+          }
+        }
+        connection.dispose();
+      }
     }
   }
 
-  /// Attempts to reconnect with the same ID. */
+  /// Attempts to reconnect with the same ID with exponential backoff */
   void reconnect() {
+    if (_isReconnecting) {
+      logger.warn('Reconnection already in progress');
+      return;
+    }
+
     if (disconnected && !destroyed) {
+      if (_reconnectAttempts >= _maxReconnectAttempts) {
+        logger.error('Maximum reconnection attempts reached');
+        emitError(PeerErrorType.NetworkError,
+            'Maximum reconnection attempts reached');
+        return;
+      }
+
+      _isReconnecting = true;
+      final delay = (_baseReconnectDelay * pow(2, _reconnectAttempts)).toInt();
+
       logger.log(
-        "Attempting reconnection to server with ID $_lastServerId",
-      );
-      _disconnected = false;
-      _initialize(_lastServerId!);
+          'Attempting reconnection to server with ID $_lastServerId in ${delay}ms');
+
+      Future.delayed(Duration(milliseconds: delay), () {
+        if (destroyed) return;
+
+        _disconnected = false;
+        _reconnectAttempts++;
+        _initialize(_lastServerId!);
+
+        _isReconnecting = false;
+      });
     } else if (destroyed) {
       throw Exception(
         "This peer cannot reconnect to the server. It has already been destroyed.",
@@ -459,16 +569,6 @@ class Peer extends StreamEventEmitter {
     }
 
     return null;
-  }
-
-  void _cleanupPeer(String peerId) {
-    final connections = _connections[peerId];
-
-    if (connections == null) return;
-
-    for (var connection in connections) {
-      connection?.dispose();
-    }
   }
 
   /// Stores messages without a set up connection, to be claimed later. */

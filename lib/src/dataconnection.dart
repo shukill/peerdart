@@ -14,7 +14,7 @@ class DataConnection extends BaseConnection {
   DataConnection(super.peerId, super.provider, super.options) {
     connectionId = options?.connectionId ?? _idPrefix + util.randomToken();
 
-    label = options?.label ?? connectionId;
+    label = options?.label ?? connectionId ?? '';
     serialization = options?.serialization ?? SerializationType.JSON;
     reliable = options?.reliable ?? false;
 
@@ -75,7 +75,7 @@ class DataConnection extends BaseConnection {
         break;
       default:
         logger.warn(
-          "Unrecognized message type:${message.type.type} from peer: $peer",
+          "Unrecognized message type:${message.type.type} from peer: $peerId",
         );
         break;
     }
@@ -100,7 +100,7 @@ class DataConnection extends BaseConnection {
         break;
 
       case RTCDataChannelState.RTCDataChannelClosed:
-        logger.log('DC#$connectionId dc closed for:$peer');
+        logger.log('DC#$connectionId dc closed for:$peerId');
         closeRequest();
         dispose();
         break;

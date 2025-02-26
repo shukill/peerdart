@@ -40,6 +40,7 @@ enum PeerErrorType {
   InvalidID("invalid-id"),
   InvalidKey("invalid-key"),
   Network("network"),
+  NetworkError("network-error"),
   PeerUnavailable("peer-unavailable"),
   SslUnavailable("ssl-unavailable"),
   ServerError("server-error"),

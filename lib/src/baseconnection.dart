@@ -6,25 +6,26 @@ import 'package:peerdart/src/peer.dart';
 import 'package:peerdart/src/servermessage.dart';
 
 abstract class BaseConnection extends StreamEventEmitter {
-  BaseConnection(this.peer, this.provider, this.options) {
+  BaseConnection(this.peerId, this.provider, this.options) {
     metadata = options?.metadata;
   }
 
+  String peerId;
+  Peer provider;
+  PeerConnectOption? options;
+  String? connectionId;
+  ConnectionType type = ConnectionType.Data;
+  String label = '';
+  Map<String, dynamic>? metadata;
   bool open = false;
-  late String connectionId;
   RTCPeerConnection? peerConnection;
-  dynamic metadata;
-  late Peer? provider;
-  late String peer;
-  late PeerConnectOption? options;
-  late ConnectionType type;
 
   void dispose();
   void handleMessage(ServerMessage message);
 
   void closeRequest() {
     emit("close", {
-      'peer': peer,
+      'peer': peerId,
       'provider': provider,
     });
   }

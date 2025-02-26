@@ -148,4 +148,8 @@ class Socket extends StreamEventEmitter {
     // Close all the emitters
     close();
   }
+
+  void sendHeartbeat() {
+    send({'type': 'HEARTBEAT'});
+  }
 }
