@@ -1,3 +1,7 @@
+
+# 0.5.7
+- fix: close request
+
 # 0.5.4
 - fix: receiving data two times. Closes #35
 
