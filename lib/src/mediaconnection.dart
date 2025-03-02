@@ -33,6 +33,14 @@ class MediaConnection extends BaseConnection {
         'stream', remoteStream); // Should we call this `open`?
   }
 
+  void closeConnectionForPeer(String peerId) {
+    super.closeRequest();
+    super.emit<Exception>(
+      "error",
+      Exception("${"Negotiation of connection to $peerId"} failed."),
+    );
+  }
+
   @override
   void dispose() {
     _negotiator?.cleanup();
