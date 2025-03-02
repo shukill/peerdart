@@ -2,16 +2,16 @@
 
 const _DEFAULT_CONFIG = {
   'iceServers': [
+    {'urls': "stun:stun.bethesda.net:3478"},
     {
       "urls": [
-        "turn:20.244.8.73:3478",
+        "turn:eu-0.turn.peerjs.com:3478",
+        "turn:us-0.turn.peerjs.com:3478",
       ],
       "username": "peerjs",
-      "credential": "wrietymaestro",
-      "credentialType": "password",
+      "credential": "peerjsp",
     },
   ],
-  'iceTransportPolicy': 'relay',
   'sdpSemantics': "unified-plan"
 };
 
