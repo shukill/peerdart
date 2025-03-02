@@ -30,22 +30,22 @@ class PeerConfig {
 
     var iceServers = {
       'iceServers': [
-        // {'urls': "stun:stun.bethesda.net:3478"},
-        // {
-        //   'urls': [
-        //     'stun:stun.l.google.com:19302',
-        //     'stun:stun1.l.google.com:19302',
-        //   ]
-        // },
+        {'urls': "stun:stun.bethesda.net:3478"},
+        {
+          'urls': [
+            'stun:stun.l.google.com:19302',
+            'stun:stun1.l.google.com:19302',
+          ]
+        },
         myTurnConfig,
-        // {
-        //   "urls": [
-        //     "turn:eu-0.turn.peerjs.com:3478",
-        //     "turn:us-0.turn.peerjs.com:3478",
-        //   ],
-        //   "username": "peerjs",
-        //   "credential": "peerjsp",
-        // },
+        {
+          "urls": [
+            "turn:eu-0.turn.peerjs.com:3478",
+            "turn:us-0.turn.peerjs.com:3478",
+          ],
+          "username": "peerjs",
+          "credential": "peerjsp",
+        },
       ],
       'sdpSemantics': "unified-plan"
     };
