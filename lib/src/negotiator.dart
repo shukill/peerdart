@@ -339,4 +339,14 @@ class Negotiator<T extends BaseConnection> {
       logger.log("Failed to handleCandidate, $err");
     }
   }
+
+  Future<void> closeConnection() async {
+    logger.log(
+        'SHUKILL KILLING CONNECTION ${connection.peerConnection?.toString()}');
+    connection.provider?.emitError(
+        PeerErrorType.WebRTC, "Connection closed SHUKILL on provider");
+
+    // connection.peerConnection?.close();
+    // connection.peerConnection?.dispose();
+  }
 }
