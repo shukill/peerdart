@@ -28,6 +28,7 @@ class PeerConfig {
       "credential": password,
     };
 
+    print(myTurnConfig);
     var iceServers = {
       'iceServers': [
         {'urls': "stun:stun.bethesda.net:3478"},
