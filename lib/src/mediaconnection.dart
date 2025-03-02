@@ -34,6 +34,7 @@ class MediaConnection extends BaseConnection {
   }
 
   void closeConnectionForPeer(String peerId) {
+    logger.log('Closing connection for peer ks $peerId');
     super.closeRequest();
     super.emit<Exception>(
       "error",
