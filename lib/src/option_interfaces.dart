@@ -24,11 +24,12 @@ class PeerOptions {
     this.path = '/',
     this.key = PeerConfig.DEFAULT_KEY,
     this.token,
-    this.config = PeerConfig.defaultConfig,
+    this.config,
     this.secure = true,
     this.pingInterval,
   }) {
-    token = util.randomToken();
+    token = token ?? util.randomToken();
+    config = config ?? PeerConfig.defaultConfig;
   }
 
   PeerOptions merge(PeerOptions options) => PeerOptions(
